@@ -6,8 +6,11 @@ from selenium.webdriver.support import expected_conditions
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.chrome.options import Options
-from progress.bar import Bar
+from progress.bar import ShadyBar
+from contextlib import suppress
 from requests import get
+import time
+import json
 import re
 import csv
 import os
@@ -40,15 +43,19 @@ def read_json(file_path):
 
     return(data)
 
+def clear_terminal():
+    os.system('cls' if os.name == 'nt' else 'clear')
+
 def get_doi(bioProject_URL):
 
     doi_x = ''
     list_of_pubmed_id = []
 
-    URL = URL_ncbi_bioproject+ '?term=' + bioProject_URL
+    URL = URL_ncbi_bioproject + bioProject_URL
 
     page = get(URL)
-    bs = BeautifulSoup(page.content, 'html.parser')
+    print(URL)
+    bs = BeautifulSoup(page.content, 'xml')
 
     for element in bs.find_all('a', class_='RegularLink'):
         if (re.search('href="/pubmed', str(element))):
@@ -84,11 +91,11 @@ def project_status(biosample):
         return(project_status_info)
 
 def save_to_csv():
-
-    with open('results1.csv', 'w', encoding='utf8', newline='') as output_file:
+    with open('results.csv', 'w', encoding='utf8', newline='') as output_file:
         fc = csv.DictWriter(output_file, fieldnames=final_list[0].keys())
         fc.writeheader()
         fc.writerows(final_list)
+        print('\nSaved {} records in "results.csv" file.'.format(len(final_list)))
 
 def get_list_of_query(json_content):
 
@@ -108,7 +115,7 @@ def find_information(element):
 
     URL = URL_ncbi_assembly + subDirectory
     
-    driver = webdriver.Chrome(executable_path='/home/adrian/chromedriver/stable/chromedriver', chrome_options=chrome_options)
+    driver = webdriver.Chrome(executable_path='/home/adrian/chromedriver/stable/chromedriver', options = chrome_options)
     driver.get(URL)
 
     try:
@@ -125,9 +132,9 @@ def find_information(element):
 
         page = driver.page_source
     except:
-        page = ''
+        page = driver.page_source
  
-    bs = BeautifulSoup(page)
+    bs = BeautifulSoup(page, "html.parser")
 
     driver.close()
     driver.quit()
@@ -147,15 +154,11 @@ def assign_info_to_list(find_information_results):
         genBank_assembly_accession = str(result.find_all('dl', class_="details")[7])
         genBank_assembly_accession = re.sub('<.*?>', '', genBank_assembly_accession).split()[-2]
 
-
         if genBank_assembly_accession == 'accession:':
             genBank_assembly_accession = str(result.find_all('dl', class_="details")[6])
             genBank_assembly_accession = re.sub('<.*?>', '', genBank_assembly_accession).split()[-2]
 
         list_of_assembly_accessions.append([genBank_assembly_accession, element])
-
-def species_is_a_tree():
-    pass
 
 def for_genBank_code_find_info(genBank_assembly_accession):
          
@@ -168,137 +171,94 @@ def for_genBank_code_find_info(genBank_assembly_accession):
     basic_info = bs_2.find_all('dl', class_="assembly_summary_new margin_t0")
     basic_info = re.sub('<.*?>', ' ', str(basic_info)).split()
 
-    species_name_from_ncbi = '{} {}'.format(basic_info[basic_info.index("name:") + 1], basic_info[basic_info.index("name:") + 2])
-    if species_name_from_ncbi not in species_tree_list_from_json: 
-        print('{} - nie ma na liście drzew!'.format(species_name_from_ncbi))
+    try:
+        species_name_from_ncbi = '{} {}'.format(basic_info[basic_info.index("name:") + 1], basic_info[basic_info.index("name:") + 2])
+        if species_name_from_ncbi not in species_tree_list_from_json: 
+            return None
+    except:
         return None
 
     global_statistics = bs_2.find_all('tbody')
     global_statistics = re.sub('<.*?>', ' ', str(global_statistics)).split()
 
-    dictionary['bio_project'] = basic_info[basic_info.index("BioProject:") + 1]
+    with suppress(ValueError): dictionary['bio_project'] = basic_info[basic_info.index("BioProject:") + 1]
+    with suppress(ValueError): dictionary['family'] = genBank_assembly_accession[1]
+    with suppress(ValueError): dictionary['genus'] = basic_info[basic_info.index("name:") + 1]
+    with suppress(ValueError): dictionary['species'] = basic_info[basic_info.index("name:") + 2]
+    with suppress(ValueError): dictionary['biosample'] = basic_info[basic_info.index("BioSample:") + 1]
+    with suppress(ValueError): dictionary['date'] = basic_info[basic_info.index("Date:") + 1]
+    with suppress(ValueError): dictionary['assembly_level'] = basic_info[basic_info.index("level:") + 1]
+    with suppress(ValueError): dictionary['genome_representation'] = basic_info[basic_info.index("representation:") + 1]
+    with suppress(ValueError): dictionary['genBank_assembly_accession'] = genBank_assembly_accession[0]
 
-    try:
-        dictionary['family'] = genBank_assembly_accession[1]
-    except:
-        pass
-    try:
-        dictionary['genus'] = basic_info[basic_info.index("name:") + 1]
-    except:
-        pass
-    try:
-        dictionary['species'] = basic_info[basic_info.index("name:") + 2]
-    except:
-        pass
-    try:
-        dictionary['biosample'] = basic_info[basic_info.index("BioSample:") + 1]
-    except:
-        pass
-    try:
-        dictionary['date'] = basic_info[basic_info.index("Date:") + 1]
-    except:
-        pass
-    try:
-        dictionary['assembly_level'] = basic_info[basic_info.index("level:") + 1]
-    except:
-        pass
-    try:
-        dictionary['genome_representation'] = basic_info[basic_info.index("representation:") + 1]
-    except:
-        pass
-    try:
-        dictionary['genBank_assembly_accession'] = genBank_assembly_accession[0]
-    except:
-        pass
-    
     # global statistics
-    try:
-        dictionary['Total ungapped length'] = global_statistics[global_statistics.index("ungapped") + 2]
-    except:
-        pass
-    try:
-        dictionary['Gaps between scaffolds'] = global_statistics[global_statistics.index("between") + 2]
-    except:
-        pass
+
+    with suppress(ValueError): dictionary['Total ungapped length'] = global_statistics[global_statistics.index("ungapped") + 2]
+    with suppress(ValueError): dictionary['Gaps between scaffolds'] = global_statistics[global_statistics.index("between") + 2]
+
 
     indexes_of = [i for i, x in enumerate(global_statistics) if x == "of"]
     for index in indexes_of:
         if global_statistics[index + 1] == 'scaffolds':
-            try:
                 dictionary['Number of scaffolds'] = global_statistics[index + 2]
-            except:
-                pass
 
     indexes_of = [i for i, x in enumerate(global_statistics) if x == "N50"]
     for index in indexes_of:
+
         if global_statistics[index - 1] == 'Scaffold':
-            try:
                 dictionary['Scaffold N50'] = global_statistics[index + 1]
-            except:
-                pass
+
         if global_statistics[index - 1] == 'Contig':
-            try:
                 dictionary['Contig N50'] = global_statistics[index + 1]
-            except:
-                pass
+
     
     indexes_of = [i for i, x in enumerate(global_statistics) if x == "L50"]
     for index in indexes_of:
         if global_statistics[index - 1] == 'Scaffold':
-            try:
                 dictionary['Scaffold L50'] = global_statistics[index + 1]
-            except:
-                pass
+
         if global_statistics[index - 1] == 'Contig':
-            try:
                 dictionary['Contig L50'] = global_statistics[index + 1]    
-            except:
-                pass
-    try:
-        dictionary['Number of contigs'] = global_statistics[global_statistics.index("contigs") + 1]
-    except:
-        pass
-    try:
-        dictionary['Total number of chromosomes and plasmids'] = global_statistics[global_statistics.index("plasmids") + 1]
-    except:
-        pass
-    try:
-        dictionary['DOI'] = get_doi(dictionary['bio_project'])
-    except:
-        pass
-    try:
-        dictionary['Project status'] = project_status(basic_info[basic_info.index("BioSample:") + 1])
-    except:
-        pass
+
+    with suppress(ValueError): dictionary['Number of contigs'] = global_statistics[global_statistics.index("contigs") + 1]
+    with suppress(ValueError): dictionary['Total number of chromosomes and plasmids'] = global_statistics[global_statistics.index("plasmids") + 1]
+    with suppress(ValueError): dictionary['DOI'] = get_doi(dictionary['bio_project'])
+    with suppress(ValueError): dictionary['Project status'] = project_status(basic_info[basic_info.index("BioSample:") + 1])
+
     dictionary_copy = dictionary.copy()
     final_list.append(dictionary_copy)
     dictionary.clear()
-    
-    os.system('cls' if os.name == 'nt' else 'clear')
-        
+            
 
 if __name__ == "__main__":
 
+    clear_terminal()
+
+    start = time.time()
+
     json_file = read_json('species.json')
 
-    os.system('cls' if os.name == 'nt' else 'clear')
+    print('Retrieving information of each tree family:\n')
 
-    bar = Bar('', max = len(get_list_of_query(json_file)))
+    bar = ShadyBar('', max = len(get_list_of_query(json_file)))
     for element in get_list_of_query(json_file):
         assign_info_to_list(find_information(element))
         bar.next()
     bar.finish()
 
-    os.system('cls' if os.name == 'nt' else 'clear')
-    print("Liczba znalezionych rekordów: {}".format(len(list_of_assembly_accessions)))
+    print('\nRetrieval of species information:\n')
 
-    bar = Bar('', max = len(list_of_assembly_accessions))
+    bar = ShadyBar('', max = len(list_of_assembly_accessions))
     for genBank_assembly_accession in list_of_assembly_accessions:
         for_genBank_code_find_info(genBank_assembly_accession)
         bar.next()
     bar.finish()
 
-
     save_to_csv()
+
+    end = time.time()
+
+    execution_time = round(end - start, 1)
+    print('\nScript execution time: {} s.\n'.format(execution_time))
 
     print('Finished.')
