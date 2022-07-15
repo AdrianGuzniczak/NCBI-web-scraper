@@ -54,7 +54,6 @@ def get_doi(bioProject_URL):
     URL = URL_ncbi_bioproject + bioProject_URL
 
     page = get(URL)
-    print(URL)
     bs = BeautifulSoup(page.content, 'xml')
 
     for element in bs.find_all('a', class_='RegularLink'):
