@@ -8,14 +8,16 @@ from requests import get
 species_list = []
 
 def find_species():
-
-    URL = 'https://en.wikipedia.org/wiki/List_of_trees_and_shrubs_by_taxonomic_family'
-    page = get(URL)
+    '''
+    The function retrieves information about organisms from
+    https://en.wikipedia.org/wiki/List_of_trees_and_shrubs_by_taxonomic_family
+    '''
+    url = 'https://en.wikipedia.org/wiki/List_of_trees_and_shrubs_by_taxonomic_family'
+    page = get(url)
 
     bs = BeautifulSoup(page.content, 'html.parser')
-
     tree_classes = bs.find_all("div", {"style" : "background: white; border: 1px solid rgb(153, 153, 153); padding: 1em; width: 80%;"})
-    
+
     for one_class in tree_classes:
         tree_records = one_class.find('tbody')
         tree_records = tree_records.find_all('tr')
@@ -33,15 +35,16 @@ def find_species():
 
                 species_dict_copy = species_dict.copy()
                 species_list.append(species_dict_copy)
-            
-    print('Number of tree species found: {}'.format(len(species_list)))
+
+    print(f'Number of tree species found: {len(species_list)}')
+
 
 def save_to_json():
-    with open('species.json', 'w') as file:
+    '''Saves the results to the species.json file.'''
+    with open('species.json', 'w', encoding="utf8") as file:
         json.dump(species_list , file)
         print('Saved in "species.json" file.')
 
 if __name__ == '__main__':
     find_species()
     save_to_json()
-
