@@ -30,7 +30,6 @@ def find_species():
                 species_dict = {}
 
                 species_dict['Species'] = one_record.split('\n')[1]
-                species_dict['Common name'] = one_record.split('\n')[3]
                 species_dict['Family'] = one_record.split('\n')[5]
 
                 species_dict_copy = species_dict.copy()
