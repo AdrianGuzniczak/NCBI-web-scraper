@@ -23,6 +23,7 @@ URL_NCBI = 'https://www.ncbi.nlm.nih.gov'
 URL_NCBI_ASSEMBLY = 'https://www.ncbi.nlm.nih.gov/assembly/'
 URL_NCBI_BIOPROJECT = 'https://www.ncbi.nlm.nih.gov/bioproject/'
 URL_GOLD = 'https://gold.jgi.doe.gov/'
+CHROME_DRIVER_PATH = '/home/adrian/chromedriver/stable/chromedriver'
 
 chrome_options = Options()
 chrome_options.add_argument('--headless')
@@ -126,7 +127,7 @@ def find_information(element):
     sub_dir = "?term=" + element
     url = URL_NCBI_ASSEMBLY + sub_dir
 
-    driver = webdriver.Chrome(executable_path='/home/adrian/chromedriver/stable/chromedriver', \
+    driver = webdriver.Chrome(executable_path = CHROME_DRIVER_PATH, \
         options = chrome_options)
     driver.get(url)
 
