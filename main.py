@@ -32,11 +32,15 @@ chrome_options.add_argument('--disable-dev-shm-usage')
 
 def read_json(file_path):
     '''Returns the content of the json file.'''
-    with open(file_path, "r", encoding="utf8") as file:
-        data = json.load(file)
-    for species in data:
-        species_tree_list_from_json.append(species.get('Species')) if species.get('Species') \
-            not in species_tree_list_from_json else species_tree_list_from_json
+    try:
+        with open(file_path, "r", encoding="utf8") as file:
+            data = json.load(file)
+        for species in data:
+            species_tree_list_from_json.append(species.get('Species')) if species.get('Species') \
+                not in species_tree_list_from_json else species_tree_list_from_json
+    except FileNotFoundError as not_found:
+        print(f"The '{not_found.filename}' file is required.\nRead 'README.md' file.")
+        exit()
 
     return data
 
